@@ -1,6 +1,6 @@
 
-#This project will use packages of pandas,
-#If it's not installed, run "pip install pandas" in the terminal to install it.
+#This project will use packages of pandas, matplotlib, scikit-learn, and polars.
+#If it's not installed, run "pip install" + package_name in the terminal to install it.
 
 #Import libraries
 import pandas as pd
@@ -52,6 +52,9 @@ for col in categorical_cols:
 # Note: I planned to look into demographic charactersitics as well, but since this dataset is not a real-world dataset but a simulated one, I decided to drop this part in the analysis onforth.
 
 # Plot the distribution of swipe_right_ratio to see how users behave in general
+# Justification:
+# swipe_right_ratio is a continuous numerical variable ranging from 0 to 1, so a histogram is appropriate for examining its overall distribution. 
+# Dividing the values into intervals allows me to see whether users are concentrated around particular swipe-right rates, whether the distribution is skewed, and whether there are unusually common or uncommon ranges.
 
 plt.figure(figsize=(8, 5))
 
@@ -175,7 +178,10 @@ print(comparison.head(10))
 
 
 # Visualization 1: Actual vs. Predicted Values
-
+# Justification:
+# A scatter plot is appropriate because both the actual and predicted numbers of mutual matches are numerical variables. 
+# Plotting each observation's actual value against its prediction allows me to visually assess model accuracy. 
+# The diagonal reference line represents perfect predictions: points close to the line indicate accurate predictions, while points far from it indicate larger prediction errors.
 plt.figure(figsize=(8, 6))
 
 plt.scatter(
@@ -214,6 +220,8 @@ print(feature_importance)
 # This suggests that users who receive more likes, has longer biography, and spend more time on the app are more likely to have mutual matches.
 
 # Visualization 2: Random Forest Feature Importance
+# Justification:
+# Feature importance consists of one numerical importance score for each categorical feature name, so a horizontal bar chart makes it easy to compare the relative contribution of predictors.
 
 plt.figure(figsize=(8, 5))
 
@@ -230,3 +238,90 @@ plt.title("Random Forest Feature Importance")
 plt.gca().invert_yaxis()
 
 plt.show()
+
+
+# ---------------------------------------------
+# Use of Polars compared to Pandas 
+import polars as pl
+
+# Load dataset
+pl_df = pl.read_csv("dating_app_behavior_dataset.csv")
+
+# Inspect the dataset in the same way as we did with pandas
+print(pl_df.head())
+print(pl_df.shape)
+
+print("\nData types:")
+print(pl_df.schema)
+
+print("\nSummary statistics:")
+print(pl_df.describe())
+
+print("\nMissing values:")
+print(pl_df.null_count())
+
+# I noticed that the tables produced by Polars are more compact and in a text/terminal style than those produced by Pandas.
+
+# Filtering high swipe users using Polars
+high_swipe_users_pl = pl_df.filter(
+    pl.col("swipe_right_ratio") > 0.70
+)
+
+print(
+    high_swipe_users_pl.select(
+        [
+            "swipe_right_ratio",
+            "likes_received",
+            "mutual_matches"
+        ]
+    ).head()
+)
+
+# Grouping
+swipe_summary_pl = (
+    pl_df
+    .group_by("swipe_right_label")
+    .agg(
+        pl.col("mutual_matches")
+        .mean()
+        .alias("average_matches"),
+
+        pl.col("mutual_matches")
+        .median()
+        .alias("median_matches"),
+
+        pl.col("mutual_matches")
+        .count()
+        .alias("number_of_users")
+    )
+    .sort("swipe_right_label")
+)
+
+print(swipe_summary_pl)
+
+usage_summary_pl = (
+    pl_df
+    .group_by("app_usage_time_label")
+    .agg(
+        pl.col("mutual_matches")
+        .mean()
+        .alias("average_matches"),
+
+        pl.col("mutual_matches")
+        .median()
+        .alias("median_matches"),
+
+        pl.col("mutual_matches")
+        .count()
+        .alias("number_of_users")
+    )
+    .sort("app_usage_time_label")
+)
+
+print(usage_summary_pl)
+
+# Reflection on Pandas vs. Polars:
+# After performing similar data manipulation and aggregation tasks in both Pandas and Polars, I noticed several differences between the two libraries. 
+# Polars consistently displays the data type of each variable directly under the column name in its table output, which makes the structure of the data immediately visible. 
+# However, its default table display is more text-based, while Pandas integrates more naturally with Jupyter Notebook's HTML-style table display and is visually easier to read. 
+# In my performance comparison, Polars also had a shorter execution time than Pandas for the same filtering and grouping operations. 
