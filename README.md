@@ -47,7 +47,6 @@ The repository contains the main files required for the assignment:
 
 ### 1. Clone the repository
 
-```bash
 git clone git@github.com:yiranch017/IDS706-Assignment-2.git
 cd IDS706-Assignment-2
 
