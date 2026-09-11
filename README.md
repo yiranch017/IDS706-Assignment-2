@@ -3,3 +3,12 @@ EDA of Dating App Behavior Dataset
 
 
 https://www.kaggle.com/datasets/keyushnisar/dating-app-behavior-dataset/data
+
+
+
+
+
+
+
+Comparison of Polars v.s. Pandas
+dataframe printed have different outlooks
