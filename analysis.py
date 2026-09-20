@@ -45,6 +45,21 @@ def preprocess_data(data):
     return cleaned
 
 
+def detect_outliers(data, column):
+    """Return a Boolean mask identifying IQR outliers in a numeric column."""
+    if column not in data.columns:
+        raise KeyError(f"Unknown column: {column}")
+    if not pd.api.types.is_numeric_dtype(data[column]):
+        raise TypeError(f"Outlier detection requires a numeric column: {column}")
+
+    first_quartile = data[column].quantile(0.25)
+    third_quartile = data[column].quantile(0.75)
+    iqr = third_quartile - first_quartile
+    lower_bound = first_quartile - 1.5 * iqr
+    upper_bound = third_quartile + 1.5 * iqr
+    return (data[column] < lower_bound) | (data[column] > upper_bound)
+
+
 def summarize_matches(data, group_column):
     """Summarize matching outcomes for a categorical behavior variable."""
     if group_column not in data.columns:
