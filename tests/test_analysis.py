@@ -6,6 +6,7 @@ import pytest
 
 from analysis import (
     FEATURES,
+    detect_outliers,
     load_data,
     preprocess_data,
     run_pipeline,
@@ -63,6 +64,18 @@ def test_preprocess_removes_duplicates_and_missing_values(sample_data):
     assert len(cleaned) == len(sample_data) - 1
     assert cleaned.duplicated().sum() == 0
     assert cleaned[FEATURES].isna().sum().sum() == 0
+
+
+def test_detect_outliers_flags_extreme_value():
+    data = pd.DataFrame(
+        {"likes_received": [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 1000]}
+    )
+
+    outlier_mask = detect_outliers(data, "likes_received")
+
+    assert outlier_mask.sum() == 1
+    assert outlier_mask.iloc[-1]
+    assert not outlier_mask.iloc[:-1].any()
 
 
 def test_summary_returns_correct_counts_and_means(sample_data):
