@@ -1,0 +1,6 @@
+pandas
+numpy
+matplotlib
+polars
+scikit-learn
+pytest
