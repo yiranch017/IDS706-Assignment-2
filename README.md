@@ -57,11 +57,12 @@ Run the full test suite locally with:
 python -m pytest -v
 ```
 
-The suite contains five unit/edge-case tests and one system test:
+The suite contains six unit/edge-case tests and one system test:
 
 - valid CSV loading;
 - rejection of a dataset missing a required column;
 - removal of duplicate and missing observations;
+- IQR detection of an extreme outlier;
 - correctness of grouped counts and averages;
 - model training, prediction, and evaluation outputs; and
 - an end-to-end test from CSV loading through model evaluation.
