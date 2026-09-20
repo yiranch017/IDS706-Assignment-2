@@ -47,6 +47,8 @@ python -m pip install -r requirements.txt
 python analysis.py
 ```
 
+The same commands are also available as `make install`, `make test`, and `make run`.
+
 ## Testing
 
 Run the full test suite locally with:
