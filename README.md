@@ -28,7 +28,7 @@ The prediction target is `mutual_matches`.
 
 ## Repository Structure
 
-- `Assignment2_PythonCode` — original exploratory analysis, visualizations, and Pandas/Polars comparison
+- `exploratory_data_analysis.py` — original exploratory analysis, visualizations, and Pandas/Polars comparison
 - `analysis.py` — reusable functions for loading, preprocessing, grouping, modeling, and the complete pipeline
 - `tests/test_analysis.py` — unit, edge-case, and end-to-end tests
 - `.github/workflows/tests.yml` — GitHub Actions CI workflow
