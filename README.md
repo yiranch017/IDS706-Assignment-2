@@ -69,7 +69,12 @@ The suite contains six unit/edge-case tests and one system test:
 
 GitHub Actions automatically installs the dependencies and runs all tests on every push and pull request. The badge at the top of this README reports the latest workflow result.
 
-Workflow history is available on the repository's **Actions** tab for CI evidence and screenshots.
+Workflow history is available on the repository's **Actions** tab for CI evidence.
+
+<img width="1465" height="796" alt="Screenshot 2026-09-21 at 19 54 59" src="https://github.com/user-attachments/assets/f2705550-978f-497a-ab0f-a1d143cd90f7" />
+
+<img width="1445" height="688" alt="Screenshot 2026-09-21 at 19 57 34" src="https://github.com/user-attachments/assets/ad6579f2-6f98-4462-b9fd-4d5e200c87bc" />
+
 
 ## Main Results
 
