@@ -1,301 +1,496 @@
-# This project will use packages of pandas, matplotlib, scikit-learn, and polars.
-# If it's not installed, run "pip install" + package_name in the terminal to install it.
+"""Exploratory analysis for the dating-app behavior dataset."""
 
-# Import libraries
-import pandas as pd
+from pathlib import Path
+from time import perf_counter
+
 import matplotlib.pyplot as plt
-from analysis import summarize_outliers, summarize_swipe_deciles
-
-# Import and read the Dataset
-df = pd.read_csv("dating_app_behavior_dataset.csv")
-
-# Inspection
-# Display the first five rows of the dataset
-df.head()
-
-# Display the shape of the dataset
-df.shape
-# This dataset has 50000 rows and 19 columns.
-
-# Check missing values
-print("\nMissing values:")
-print(df.isnull().sum())
-
-# Check duplicated rows
-print("\nDuplicated rows:")
-print(df.duplicated().sum())
-
-# Assess outliers using the IQR rule
-outlier_report = summarize_outliers(df)
-
-print("\nOutlier Summary:")
-print(outlier_report)
-
-# Missing values, duplicate rows, and statistically unusual observations
-# are treated separately. IQR-flagged observations are not automatically
-# removed because an extreme value is not necessarily an invalid value.
-# The outlier report is used to evaluate their prevalence before deciding
-# whether removal is justified.
-
-# Display the data types of each column in the dataset
-# I chose this method instead of df.info because this table specifies the data type of each column correspondingly.
-dtype_table = df.dtypes.reset_index()
-dtype_table.columns = ["Column", "Data Type"]
-print(dtype_table)
-# We can understand the variables by grouping them into 3 categories: 1) Demographic characteristics for columns 0-5, 2) App behavior for columns 6-10 and 12-17, and 3) Matching outcome variables for columns 11 & 18.
-
-# Display the summary statistics of numerical variables in the dataset
-df.describe()
-
-# Inspect categorical variables
-# Group them together first
-categorical_cols = df.select_dtypes(include="object").columns
-
-# Display the categories contained in each variable
-for col in categorical_cols:
-    print(f"\n{col}:")
-    print(df[col].unique())
-# Most of them don't have unique values, except for the interest_tags (which contains a number of combinations of three interest categories). To keep the analysis focused, we will not include this variable in the analysis for now.
-
-# After inspection, now we can start the real analysis.
-# Key Question: How does swiping behavior relate to matching outcomes?
-# Most of the dating apps use subscription-based business models. They provide users with a limited number of swipes per day, and if they want to swipe more, they have to pay for a subscription.
-# This means that companies need to sell the idea that swiping more will increase the chances of matching with someone to users to keep them engaged and willing to pay for a subscription.
-# Therefore, it is essential to understand if the relationship actually holds.
-# Note: I planned to look into demographic charactersitics as well, but since this dataset is not a real-world dataset but a simulated one, I decided to drop this part in the analysis onforth.
-
-# Plot the distribution of swipe_right_ratio to see how users behave in general
-# Justification:
-# swipe_right_ratio is a continuous numerical variable ranging from 0 to 1, so a histogram is appropriate for examining its overall distribution.
-# Dividing the values into intervals allows me to see whether users are concentrated around particular swipe-right rates, whether the distribution is skewed, and whether there are unusually common or uncommon ranges.
-
-plt.figure(figsize=(8, 5))
-
-plt.hist(df["swipe_right_ratio"], bins=20, edgecolor="black")
-
-plt.xlabel("Swipe Right Ratio")
-plt.ylabel("Number of Users")
-plt.title("Distribution of Swipe Right Ratio")
-
-plt.show()
-
-# Define the high_swipe_users by filtering users who swipe right more than 70% of the time
-high_swipe_users = df[df["swipe_right_ratio"] > 0.70]
-
-# Display the shape of the filtered dataset (i.e., the number of high_swipe users)
-high_swipe_users.shape
-# 7700 in total, which is 15.4% of the total users.
-
-# Calculate the mean of mutual_matches for high swipe users and compare it with the overall mean
-high_swipe_mean = high_swipe_users["mutual_matches"].mean()
-overall_mean = df["mutual_matches"].mean()
-print(high_swipe_mean - overall_mean)
-# The mean of mutual_matches for high swipe users is 0.026 higher than the overall mean, which is a very small difference.
-
-# We can also use the prexisting labels of swipe_right_label to group the data and get a full picture of the matching outcomes across groups with different swipe behaviors.
-swipe_summary = df.groupby("swipe_right_label")["mutual_matches"].agg(
-    average_matches="mean", median_matches="median", number_of_users="count"
-)
-swipe_summary
-# There isn't a big variance in the mutual matches outcome within different swipe behavior groups, besides choosy swipers have a lower mean (13.65) than other groups (13.87, 13.90, 13.88).
-
-# Examine matching outcomes across the full swipe-right distribution.
-# Instead of relying only on an arbitrary high-swiping threshold,
-# users are divided into approximately equal-sized groups based on
-# their swipe_right_ratio.
-
-swipe_decile_summary = summarize_swipe_deciles(df)
-
-print("\nMatching Outcomes Across Swipe-Right Ratio Groups:")
-print(swipe_decile_summary)
-
-plt.figure(figsize=(8, 5))
-
-plt.plot(
-    swipe_decile_summary["average_swipe_ratio"],
-    swipe_decile_summary["average_matches"],
-    marker="o",
-)
-
-plt.xlabel("Average Swipe Right Ratio")
-plt.ylabel("Average Mutual Matches")
-plt.title("Swipe-Right Behavior and Average Mutual Matches")
-
-plt.show()
-
-# Swiping is not the only behavior that can affect matching outcomes. App usage time is another important factor to consider. Similarly, we can use the prexisting labels of app_usage_time_label to group the data.
-# Compare matching outcomes across app usage levels
-usage_summary = df.groupby("app_usage_time_label")["mutual_matches"].agg(
-    average_matches="mean", median_matches="median", number_of_users="count"
-)
-usage_summary
-
-
-# Machine Learning Model - Random Forest Regression
-# I chose a Random Forest regression model to predict the number of mutual matches.
-# Random Forest is suitable for this task because the dataset contains several numerical behavioral and profile variables that may relate to matching outcomes in nonlinear ways.
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, r2_score
-
-# Select numerical predictor variables
-features = [
-    "app_usage_time_min",
-    "swipe_right_ratio",
-    "likes_received",
-    "message_sent_count",
-    "emoji_usage_rate",
-    "profile_pics_count",
-    "bio_length",
-]
-
-# X contains the predictor variables
-X = df[features]
-
-# y is the outcome we want to predict
-y = df["mutual_matches"]
-
-# Split the data into training and testing sets
-# 80% of the data is used to train the model
-# 20% is used to evaluate its performance
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
-
-# Create the Random Forest regression model
-# n_estimators=100 saying that the model builds 100 decision trees
-rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
-
-# Train the model using the training data
-rf_model.fit(X_train, y_train)
-
-# Use the trained model to predict mutual matches
-y_pred_rf = rf_model.predict(X_test)
-
-# Evaluate model performance
-mae_rf = mean_absolute_error(y_test, y_pred_rf)
-r2_rf = r2_score(y_test, y_pred_rf)
-
-print("Random Forest Mean Absolute Error:", mae_rf)
-print("Random Forest R-squared:", r2_rf)
-# Interpretation: The mean absolute error (MAE) is 7.22, which means that on average, the model's predictions are off by about 7.22 mutual matches.
-# The R-squared value is 0.1, indicating that the model explains about 10% of the variance in mutual matches.
-# The explanatory power of this model is pretty limited, there are likely other factors influencing mutual matches that are not included in the model.
-# This is consistent with the weak relationships observed in the exploratory analysis and the synthetic nature of the dataset.
-
-# Compare actual and predicted values
-comparison = pd.DataFrame({"Actual": y_test, "Predicted": y_pred_rf})
-
-print("\nSample predictions:")
-print(comparison.head(10))
-
-
-# Visualization 1: Actual vs. Predicted Values
-# Justification:
-# A scatter plot is appropriate because both the actual and predicted numbers of mutual matches are numerical variables.
-# Plotting each observation's actual value against its prediction allows me to visually assess model accuracy.
-# The diagonal reference line represents perfect predictions: points close to the line indicate accurate predictions, while points far from it indicate larger prediction errors.
-plt.figure(figsize=(8, 6))
-
-plt.scatter(y_test, y_pred_rf, alpha=0.3)
-
-# Add a reference line showing perfect predictions
-plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], linestyle="--")
-
-plt.xlabel("Actual Mutual Matches")
-plt.ylabel("Predicted Mutual Matches")
-plt.title("Random Forest: Actual vs. Predicted Mutual Matches")
-
-plt.show()
-
-
-# Feature Importance
-
-feature_importance = pd.DataFrame(
-    {"Feature": features, "Importance": rf_model.feature_importances_}
-).sort_values("Importance", ascending=False)
-
-print("\nFeature Importance:")
-print(feature_importance)
-# Interpretation: Likes received is the most important feature in predicting mutual matches, followed by bio length and app usage time.
-# This suggests that users who receive more likes, has longer biography, and spend more time on the app are more likely to have mutual matches.
-
-# Visualization 2: Random Forest Feature Importance
-# Justification:
-# Feature importance consists of one numerical importance score for each categorical feature name, so a horizontal bar chart makes it easy to compare the relative contribution of predictors.
-
-plt.figure(figsize=(8, 5))
-
-plt.barh(feature_importance["Feature"], feature_importance["Importance"])
-
-plt.xlabel("Feature Importance")
-plt.ylabel("Feature")
-plt.title("Random Forest Feature Importance")
-
-# Put the most important feature at the top
-plt.gca().invert_yaxis()
-
-plt.show()
-
-
-# ---------------------------------------------
-# Use of Polars compared to Pandas
+import pandas as pd
 import polars as pl
 
-# Load dataset
-pl_df = pl.read_csv("dating_app_behavior_dataset.csv")
-
-# Inspect the dataset in the same way as we did with pandas
-print(pl_df.head())
-print(pl_df.shape)
-
-print("\nData types:")
-print(pl_df.schema)
-
-print("\nSummary statistics:")
-print(pl_df.describe())
-
-print("\nMissing values:")
-print(pl_df.null_count())
-
-# I noticed that the tables produced by Polars are more compact and in a text/terminal style than those produced by Pandas.
-
-# Filtering high swipe users using Polars
-high_swipe_users_pl = pl_df.filter(pl.col("swipe_right_ratio") > 0.70)
-
-print(
-    high_swipe_users_pl.select(
-        ["swipe_right_ratio", "likes_received", "mutual_matches"]
-    ).head()
+from analysis import (
+    FEATURES,
+    detect_outliers,
+    load_data,
+    summarize_matches,
+    summarize_outliers,
+    summarize_swipe_deciles,
+    train_and_evaluate,
 )
 
-# Grouping
-swipe_summary_pl = (
-    pl_df.group_by("swipe_right_label")
-    .agg(
-        pl.col("mutual_matches").mean().alias("average_matches"),
-        pl.col("mutual_matches").median().alias("median_matches"),
-        pl.col("mutual_matches").count().alias("number_of_users"),
+DATA_PATH = Path("dating_app_behavior_dataset.csv")
+
+
+def inspect_dataset(data):
+    """Inspect the structure, data types, and variables in the dataset."""
+
+    print("\nFirst five rows:")
+    print(data.head())
+
+    print("\nDataset shape:")
+    print(data.shape)
+
+    # The dataset has 50,000 rows and 19 columns.
+    # The variables can broadly be grouped into:
+    # 1. Demographic characteristics
+    # 2. App behavior and profile characteristics
+    # 3. Matching outcomes
+
+    print("\nData types:")
+
+    # I use a separate table instead of only calling df.info()
+    # because it clearly displays each variable alongside its data type.
+    dtype_table = data.dtypes.reset_index()
+    dtype_table.columns = ["Column", "Data Type"]
+    print(dtype_table)
+
+    print("\nSummary statistics:")
+    print(data.describe())
+
+    # Inspect the categories contained in categorical variables.
+    categorical_columns = data.select_dtypes(include="object").columns
+
+    print("\nCategorical Variables:")
+
+    for column in categorical_columns:
+        print(f"\n{column}:")
+        print(data[column].unique())
+
+    # Most categorical variables contain a relatively small number of
+    # categories. interest_tags contains many combinations of three
+    # interests, so I do not include it in the main analysis in order
+    # to keep the project focused.
+
+
+def assess_data_quality(data):
+    """Check missing values, duplicates, and potential outliers."""
+
+    print("\nMissing values:")
+    print(data.isnull().sum())
+
+    print("\nDuplicated rows:")
+    print(data.duplicated().sum())
+
+    # Missing values, duplicate observations, and statistical outliers
+    # are considered separately. An unusual observation is not
+    # automatically an invalid observation.
+    outlier_report = summarize_outliers(data)
+
+    print("\nOutlier Summary:")
+    print(outlier_report)
+
+    # emoji_usage_rate is the only analyzed numerical variable for which
+    # the IQR method identifies outliers. Before deciding whether to remove
+    # them, I check whether those values fall outside the valid range.
+    emoji_outlier_mask = detect_outliers(data, "emoji_usage_rate")
+    emoji_outliers = data[emoji_outlier_mask]
+
+    print("\nEmoji usage rate range:")
+    print("Overall minimum:", data["emoji_usage_rate"].min())
+    print("Overall maximum:", data["emoji_usage_rate"].max())
+
+    print("\nEmoji usage outlier range:")
+    print("Minimum outlier:", emoji_outliers["emoji_usage_rate"].min())
+    print("Maximum outlier:", emoji_outliers["emoji_usage_rate"].max())
+
+    outlier_count = int(emoji_outlier_mask.sum())
+    outlier_percentage = emoji_outlier_mask.mean() * 100
+
+    print(
+        "\nOutlier decision:"
+        f" {outlier_count} observations "
+        f"({outlier_percentage:.2f}% of the dataset) are flagged as "
+        "emoji_usage_rate outliers."
     )
-    .sort("swipe_right_label")
-)
 
-print(swipe_summary_pl)
+    # Interpretation:
+    # The IQR method identifies statistically unusual observations, but
+    # unusual does not necessarily mean incorrect. The flagged
+    # emoji_usage_rate values remain within the valid 0-to-1 range for
+    # a rate. Therefore, they are treated as plausible high-usage
+    # behavior and retained rather than automatically removed.
 
-usage_summary_pl = (
-    pl_df.group_by("app_usage_time_label")
-    .agg(
-        pl.col("mutual_matches").mean().alias("average_matches"),
-        pl.col("mutual_matches").median().alias("median_matches"),
-        pl.col("mutual_matches").count().alias("number_of_users"),
+
+def plot_swipe_distribution(data):
+    """Visualize the overall distribution of swipe-right behavior."""
+
+    # swipe_right_ratio is a continuous numerical variable ranging from
+    # 0 to 1, so a histogram is appropriate for examining its distribution.
+    # Dividing the values into intervals helps show whether users cluster
+    # around particular swipe-right rates and whether the distribution is
+    # skewed or contains unusually common ranges.
+
+    plt.figure(figsize=(8, 5))
+
+    plt.hist(
+        data["swipe_right_ratio"],
+        bins=20,
+        edgecolor="black",
     )
-    .sort("app_usage_time_label")
-)
 
-print(usage_summary_pl)
+    plt.xlabel("Swipe Right Ratio")
+    plt.ylabel("Number of Users")
+    plt.title("Distribution of Swipe Right Ratio")
+    plt.tight_layout()
 
-# Reflection on Pandas vs. Polars:
-# After performing similar data manipulation and aggregation tasks in both Pandas and Polars, I noticed several differences between the two libraries.
-# Polars consistently displays the data type of each variable directly under the column name in its table output, which makes the structure of the data immediately visible.
-# However, its default table display is more text-based, while Pandas integrates more naturally with Jupyter Notebook's HTML-style table display and is visually easier to read.
-# In my performance comparison, Polars also had a shorter execution time than Pandas for the same filtering and grouping operations.
+    plt.show()
+
+
+def analyze_swipe_behavior(data):
+    """Analyze how swipe-right behavior relates to mutual matches."""
+
+    # Key research question:
+    # How does swiping behavior relate to matching outcomes?
+    #
+    # Many dating apps use subscription-based business models and may
+    # encourage users to remain active on the platform. This makes it
+    # useful to examine whether greater swipe-right activity is actually
+    # associated with more mutual matches in this dataset.
+    #
+    # Because this dataset is synthetic, the findings should be treated
+    # as a programming and modeling exercise rather than evidence about
+    # real dating-app users.
+
+    # First, use a simple threshold-based comparison. Users who swipe
+    # right more than 70% of the time are classified here as high-swiping
+    # users. This gives an intuitive comparison with the overall sample.
+    high_swipe_users = data[data["swipe_right_ratio"] > 0.70]
+
+    high_swipe_mean = high_swipe_users["mutual_matches"].mean()
+    overall_mean = data["mutual_matches"].mean()
+
+    print("\nHigh-Swipe Users:")
+    print("Number of users:", len(high_swipe_users))
+    print(
+        "Difference from overall average matches:",
+        high_swipe_mean - overall_mean,
+    )
+
+    # The high-swipe group represents about 15% of users in this dataset,
+    # and its average number of matches is only slightly different from
+    # the overall average. The threshold is useful for an intuitive
+    # comparison, but 70% is still an arbitrary cutoff.
+
+    # The dataset also contains predefined swipe behavior labels.
+    # These provide a broader categorical comparison of matching outcomes.
+    swipe_summary = summarize_matches(
+        data,
+        "swipe_right_label",
+    )
+
+    print("\nSwipe Behavior Summary:")
+    print(swipe_summary)
+
+    # To avoid relying only on an arbitrary 70% threshold, I also divide
+    # users into approximately equal-sized groups according to their actual
+    # swipe_right_ratio. This provides a more detailed view across the full
+    # distribution of swipe behavior.
+    swipe_decile_summary = summarize_swipe_deciles(data)
+
+    print("\nMatching Outcomes Across Swipe-Right Ratio Groups:")
+    print(swipe_decile_summary.to_string(index=False))
+
+    # A line plot is appropriate here because the groups are ordered from
+    # lower to higher swipe-right behavior. This makes it easier to assess
+    # whether average mutual matches consistently increase as users swipe
+    # right more frequently.
+    plt.figure(figsize=(8, 5))
+
+    plt.plot(
+        swipe_decile_summary["average_swipe_ratio"],
+        swipe_decile_summary["average_matches"],
+        marker="o",
+    )
+
+    plt.xlabel("Average Swipe Right Ratio")
+    plt.ylabel("Average Mutual Matches")
+    plt.title("Swipe-Right Behavior and Average Mutual Matches")
+    plt.tight_layout()
+
+    plt.show()
+
+    # Interpretation:
+    # Average mutual matches remain relatively stable across swipe-right
+    # ratio groups instead of steadily increasing as swipe-right behavior
+    # increases. Therefore, higher swipe-right activity does not show a
+    # clear monotonic relationship with matching outcomes in this
+    # synthetic dataset.
+
+
+def analyze_app_usage(data):
+    """Compare matching outcomes across app-usage groups."""
+
+    # Swiping is not the only behavior that may relate to matching
+    # outcomes. App usage time provides another measure of user activity,
+    # so I compare mutual matches across the predefined usage groups.
+    usage_summary = summarize_matches(
+        data,
+        "app_usage_time_label",
+    )
+
+    print("\nApp Usage Summary:")
+    print(usage_summary)
+
+    # Similar to the swipe behavior results, differences in average
+    # matching outcomes across app-usage groups are relatively small.
+
+
+def plot_model_predictions(y_test, predictions):
+    """Plot actual mutual matches against predicted values."""
+
+    # Both actual and predicted mutual matches are numerical variables,
+    # so a scatter plot provides a direct visual assessment of predictive
+    # accuracy. The diagonal reference line represents perfect prediction.
+    # Points farther from the line correspond to larger prediction errors.
+
+    plt.figure(figsize=(8, 6))
+
+    plt.scatter(
+        y_test,
+        predictions,
+        alpha=0.3,
+    )
+
+    plt.plot(
+        [y_test.min(), y_test.max()],
+        [y_test.min(), y_test.max()],
+        linestyle="--",
+    )
+
+    plt.xlabel("Actual Mutual Matches")
+    plt.ylabel("Predicted Mutual Matches")
+    plt.title("Random Forest: Actual vs. Predicted Mutual Matches")
+    plt.tight_layout()
+
+    plt.show()
+
+
+def plot_feature_importance(model):
+    """Display and visualize Random Forest feature importance."""
+
+    feature_importance = pd.DataFrame(
+        {
+            "Feature": FEATURES,
+            "Importance": model.feature_importances_,
+        }
+    ).sort_values(
+        "Importance",
+        ascending=False,
+    )
+
+    print("\nFeature Importance:")
+    print(feature_importance)
+
+    # Feature importance assigns one numerical score to each predictor.
+    # A horizontal bar chart makes it easy to compare their relative
+    # contributions and keeps longer feature names readable.
+    plt.figure(figsize=(8, 5))
+
+    plt.barh(
+        feature_importance["Feature"],
+        feature_importance["Importance"],
+    )
+
+    plt.xlabel("Feature Importance")
+    plt.ylabel("Feature")
+    plt.title("Random Forest Feature Importance")
+
+    # Put the feature with the largest importance at the top.
+    plt.gca().invert_yaxis()
+
+    plt.tight_layout()
+    plt.show()
+
+    # Interpretation:
+    # likes_received is the most important feature in this fitted model,
+    # followed by variables such as bio_length and app_usage_time_min.
+    #
+    # Feature importance describes how much the trained model relies on
+    # each variable for prediction. It should not be interpreted as proof
+    # that these variables causally increase mutual matches.
+
+
+def analyze_model(data):
+    """Train and evaluate the Random Forest regression model."""
+
+    # I use Random Forest regression because the target, mutual_matches,
+    # is numerical and the behavioral/profile predictors may relate to
+    # matching outcomes in nonlinear ways. Random Forest can capture such
+    # patterns without requiring a strictly linear relationship.
+    model, y_test, predictions, metrics = train_and_evaluate(
+        data,
+        n_estimators=100,
+    )
+
+    print("\nModel Performance:")
+    print("Mean Absolute Error:", metrics["mae"])
+    print("R-squared:", metrics["r2"])
+
+    # Interpretation:
+    # The MAE is approximately 7.22, meaning that predictions differ from
+    # observed mutual matches by roughly seven matches on average.
+    #
+    # The R-squared value is approximately 0.10, meaning the selected
+    # predictors explain only a small portion of the variation in mutual
+    # matches. The model therefore has limited predictive power.
+    #
+    # This is consistent with the relatively weak patterns observed in
+    # the exploratory analysis and with the synthetic nature of the data.
+
+    comparison = pd.DataFrame(
+        {
+            "Actual": y_test,
+            "Predicted": predictions,
+        }
+    )
+
+    print("\nSample Predictions:")
+    print(comparison.head(10))
+
+    plot_model_predictions(
+        y_test,
+        predictions,
+    )
+
+    plot_feature_importance(model)
+
+
+def compare_pandas_and_polars(path):
+    """Compare equivalent operations using Pandas and Polars."""
+
+    pandas_data = pd.read_csv(path)
+    polars_data = pl.read_csv(path)
+
+    # Run equivalent filtering and grouping tasks in each library so that
+    # their syntax, outputs, and execution times can be compared.
+
+    pandas_start = perf_counter()
+
+    pandas_high_swipe = pandas_data[pandas_data["swipe_right_ratio"] > 0.70]
+
+    pandas_swipe_summary = (
+        pandas_data.groupby("swipe_right_label")["mutual_matches"]
+        .agg(
+            average_matches="mean",
+            median_matches="median",
+            number_of_users="count",
+        )
+        .sort_index()
+    )
+
+    pandas_usage_summary = (
+        pandas_data.groupby("app_usage_time_label")["mutual_matches"]
+        .agg(
+            average_matches="mean",
+            median_matches="median",
+            number_of_users="count",
+        )
+        .sort_index()
+    )
+
+    pandas_time = perf_counter() - pandas_start
+
+    polars_start = perf_counter()
+
+    polars_high_swipe = polars_data.filter(pl.col("swipe_right_ratio") > 0.70)
+
+    polars_swipe_summary = (
+        polars_data.group_by("swipe_right_label")
+        .agg(
+            pl.col("mutual_matches").mean().alias("average_matches"),
+            pl.col("mutual_matches").median().alias("median_matches"),
+            pl.col("mutual_matches").count().alias("number_of_users"),
+        )
+        .sort("swipe_right_label")
+    )
+
+    polars_usage_summary = (
+        polars_data.group_by("app_usage_time_label")
+        .agg(
+            pl.col("mutual_matches").mean().alias("average_matches"),
+            pl.col("mutual_matches").median().alias("median_matches"),
+            pl.col("mutual_matches").count().alias("number_of_users"),
+        )
+        .sort("app_usage_time_label")
+    )
+
+    polars_time = perf_counter() - polars_start
+
+    print("\nPandas High-Swipe Users:")
+    print(
+        pandas_high_swipe[
+            [
+                "swipe_right_ratio",
+                "likes_received",
+                "mutual_matches",
+            ]
+        ].head()
+    )
+
+    print("\nPandas Swipe Summary:")
+    print(pandas_swipe_summary)
+
+    print("\nPandas Usage Summary:")
+    print(pandas_usage_summary)
+
+    print("\nPolars High-Swipe Users:")
+    print(
+        polars_high_swipe.select(
+            [
+                "swipe_right_ratio",
+                "likes_received",
+                "mutual_matches",
+            ]
+        ).head()
+    )
+
+    print("\nPolars Swipe Summary:")
+    print(polars_swipe_summary)
+
+    print("\nPolars Usage Summary:")
+    print(polars_usage_summary)
+
+    print("\nPerformance Comparison:")
+    print(f"Pandas execution time: {pandas_time:.6f} seconds")
+    print(f"Polars execution time: {polars_time:.6f} seconds")
+
+    # Reflection:
+    # After performing equivalent manipulation and aggregation tasks in
+    # Pandas and Polars, I noticed several differences.
+    #
+    # Polars displays the data type directly beneath each column name in
+    # its default table output, making the structure immediately visible.
+    # Its output is more compact and text-based, while Pandas integrates
+    # naturally with Jupyter Notebook's HTML-style tables and is visually
+    # easier to inspect interactively.
+    #
+    # Execution time is measured above rather than assuming one library is
+    # always faster. In my previous run on this dataset, Polars completed
+    # the tested filtering and grouping operations more quickly.
+
+
+def main():
+    """Run the complete exploratory analysis."""
+
+    data = load_data(DATA_PATH)
+
+    # Part 1: Understand the dataset and evaluate data quality.
+    inspect_dataset(data)
+    assess_data_quality(data)
+
+    # Part 2: Explore the main research question about swipe behavior.
+    plot_swipe_distribution(data)
+    analyze_swipe_behavior(data)
+
+    # Part 3: Examine another measure of user engagement.
+    analyze_app_usage(data)
+
+    # Part 4: Evaluate whether multiple behavioral/profile variables
+    # can jointly predict matching outcomes.
+    analyze_model(data)
+
+    # Part 5: Compare two dataframe libraries used for similar tasks.
+    compare_pandas_and_polars(DATA_PATH)
+
+
+if __name__ == "__main__":
+    main()
