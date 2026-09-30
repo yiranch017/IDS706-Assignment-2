@@ -7,7 +7,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 
-
 FEATURES = [
     "app_usage_time_min",
     "swipe_right_ratio",
@@ -60,6 +59,34 @@ def detect_outliers(data, column):
     return (data[column] < lower_bound) | (data[column] > upper_bound)
 
 
+def summarize_outliers(data, columns=None):
+    """Summarize IQR-based outliers across selected numeric columns."""
+    if columns is None:
+        columns = FEATURES + [TARGET]
+
+    records = []
+
+    for column in columns:
+        outlier_mask = detect_outliers(data, column)
+
+        records.append(
+            {
+                "column": column,
+                "outlier_count": int(outlier_mask.sum()),
+                "outlier_percentage": round(outlier_mask.mean() * 100, 2),
+            }
+        )
+
+    return (
+        pd.DataFrame(records)
+        .sort_values(
+            ["outlier_count", "column"],
+            ascending=[False, True],
+        )
+        .reset_index(drop=True)
+    )
+
+
 def summarize_matches(data, group_column):
     """Summarize matching outcomes for a categorical behavior variable."""
     if group_column not in data.columns:
@@ -76,10 +103,40 @@ def summarize_matches(data, group_column):
     )
 
 
+def summarize_swipe_deciles(data, bins=10):
+    """Group users by swipe-right ratio and summarize matching outcomes."""
+    if bins < 2:
+        raise ValueError("At least two bins are required.")
+
+    subset = data[["swipe_right_ratio", TARGET]].dropna().copy()
+
+    if subset.empty:
+        raise ValueError("No usable rows available for swipe analysis.")
+
+    subset["swipe_ratio_bin"] = pd.qcut(
+        subset["swipe_right_ratio"],
+        q=bins,
+        duplicates="drop",
+    )
+
+    return (
+        subset.groupby("swipe_ratio_bin", observed=True)
+        .agg(
+            average_swipe_ratio=("swipe_right_ratio", "mean"),
+            average_matches=(TARGET, "mean"),
+            median_matches=(TARGET, "median"),
+            number_of_users=(TARGET, "count"),
+        )
+        .reset_index()
+    )
+
+
 def train_and_evaluate(data, test_size=0.2, random_state=42, n_estimators=30):
     """Train the Random Forest and return the model, predictions, and metrics."""
     if len(data) < 5:
-        raise ValueError("At least five rows are required to train and evaluate the model.")
+        raise ValueError(
+            "At least five rows are required to train and evaluate the model."
+        )
 
     X = data[FEATURES]
     y = data[TARGET]
@@ -106,8 +163,10 @@ def run_pipeline(path, n_estimators=30):
     )
     return {
         "row_count": len(data),
+        "outlier_summary": summarize_outliers(data),
         "swipe_summary": summarize_matches(data, "swipe_right_label"),
         "usage_summary": summarize_matches(data, "app_usage_time_label"),
+        "swipe_decile_summary": summarize_swipe_deciles(data),
         "model": model,
         "y_test": y_test,
         "predictions": predictions,
@@ -116,7 +175,22 @@ def run_pipeline(path, n_estimators=30):
 
 
 if __name__ == "__main__":
-    results = run_pipeline("dating_app_behavior_dataset.csv", n_estimators=100)
+    results = run_pipeline(
+        "dating_app_behavior_dataset.csv",
+        n_estimators=100,
+    )
+
     print("Rows analyzed:", results["row_count"])
+
+    print("\nOutlier Summary:")
+    print(results["outlier_summary"])
+
+    print("\nSwipe Behavior Summary:")
+    print(results["swipe_summary"])
+
+    print("\nSwipe Ratio Decile Summary:")
+    print(results["swipe_decile_summary"])
+
+    print("\nModel Performance:")
     print("Mean Absolute Error:", results["metrics"]["mae"])
     print("R-squared:", results["metrics"]["r2"])

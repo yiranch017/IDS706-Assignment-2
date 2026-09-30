@@ -11,6 +11,8 @@ from analysis import (
     preprocess_data,
     run_pipeline,
     summarize_matches,
+    summarize_outliers,
+    summarize_swipe_deciles,
     train_and_evaluate,
 )
 
@@ -86,6 +88,44 @@ def test_summary_returns_correct_counts_and_means(sample_data):
     pd.testing.assert_series_equal(
         summary["average_matches"], expected.sort_index(), check_names=False
     )
+
+
+def test_outlier_summary_reports_extreme_value():
+    data = pd.DataFrame(
+        {
+            "likes_received": [
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                1000,
+            ]
+        }
+    )
+
+    summary = summarize_outliers(
+        data,
+        columns=["likes_received"],
+    )
+
+    assert summary.loc[0, "outlier_count"] == 1
+    assert summary.loc[0, "column"] == "likes_received"
+
+
+def test_swipe_decile_summary_uses_all_rows(sample_data):
+    summary = summarize_swipe_deciles(
+        sample_data,
+        bins=5,
+    )
+
+    assert summary["number_of_users"].sum() == len(sample_data)
+    assert summary["average_swipe_ratio"].is_monotonic_increasing
 
 
 def test_model_training_returns_predictions_and_metrics(sample_data):
