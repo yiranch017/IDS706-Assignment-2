@@ -1,89 +1,198 @@
 # IDS706 Dating App Behavior Analysis
 
-[![Tests](https://github.com/yiranch017/IDS706-Assignment-2/actions/workflows/tests.yml/badge.svg)](https://github.com/yiranch017/IDS706-Assignment-2/actions/workflows/tests.yml)
+[![Tests and Code Quality](https://github.com/yiranch017/IDS706-Assignment-2/actions/workflows/tests.yml/badge.svg)](https://github.com/yiranch017/IDS706-Assignment-2/actions/workflows/tests.yml)
 
 ## Project Overview
 
-This project explores how dating-app behavior relates to matching outcomes using a synthetic Kaggle dataset. The workflow loads and validates the data, removes unusable observations, summarizes matching outcomes across behavioral groups, and trains a Random Forest regressor to predict `mutual_matches`. The project also compares Pandas and Polars and now includes automated testing and continuous integration.
+This project explores how dating-app behavior relates to matching outcomes using a synthetic dataset of 50,000 users. The analysis focuses on whether swiping behavior and app usage are associated with `mutual_matches`, and whether behavioral and profile variables can predict matching outcomes.
 
-## Motivation and Goal
+The project includes exploratory analysis, Random Forest regression, Pandas/Polars comparison, automated testing, continuous integration, code-quality checks, and Docker containerization.
 
-Dating apps often encourage continued engagement by suggesting that greater activity may improve matching outcomes. This analysis asks whether swiping behavior and app usage are meaningfully related to mutual matches and whether a set of profile and behavioral features can predict the number of mutual matches.
+Because the dataset is synthetic, the results are treated as a programming and modeling exercise rather than evidence about real dating-app users.
 
-Because the dataset is synthetic, the results are treated as a programming and modeling exercise rather than evidence about real users.
+## Main Findings
 
-## Data
+- Matching outcomes vary only slightly across different swipe-behavior groups.
+- Dividing users across the full `swipe_right_ratio` distribution also shows no clear monotonic increase in matches as users swipe right more frequently.
+- The Random Forest model achieved an MAE of approximately **7.22** and an R² of approximately **0.10**, indicating limited predictive power.
+- `likes_received` had the highest Random Forest feature importance, although feature importance should not be interpreted causally.
+- Polars was faster than Pandas for the filtering and grouping operations tested, while Pandas provided a more polished interactive table display.
 
-The [Dating App Behavior Dataset](https://www.kaggle.com/datasets/keyushnisar/dating-app-behavior-dataset/data) contains 50,000 observations and 19 variables. The model uses:
+## Data Quality
 
-- `app_usage_time_min`
-- `swipe_right_ratio`
-- `likes_received`
-- `message_sent_count`
-- `emoji_usage_rate`
-- `profile_pics_count`
-- `bio_length`
+The dataset contains no missing values or duplicate observations.
 
-The prediction target is `mutual_matches`.
+IQR-based outlier detection identified **311 observations (0.62%)** in `emoji_usage_rate`. These observations ranged from **0.74 to 0.94**, which remains within the valid 0-to-1 range for a rate.
+
+Because these observations are statistically unusual but still plausible values, they were retained rather than automatically removed.
+
+## Analysis
+
+The analysis includes:
+
+- distribution of swipe-right behavior;
+- comparison of matching outcomes across predefined swipe groups;
+- swipe-ratio quantile analysis across the full behavior distribution;
+- comparison of matching outcomes across app-usage groups;
+- Random Forest regression;
+- actual-versus-predicted visualization;
+- feature-importance analysis; and
+- equivalent filtering/grouping tasks in Pandas and Polars.
+
+The primary reusable workflow is implemented in `analysis.py`, while `exploratory_data_analysis.py` contains the interpretation and visualization workflow.
 
 ## Repository Structure
 
-- `exploratory_data_analysis.py` — original exploratory analysis, visualizations, and Pandas/Polars comparison
-- `analysis.py` — reusable functions for loading, preprocessing, grouping, modeling, and the complete pipeline
-- `tests/test_analysis.py` — unit, edge-case, and end-to-end tests
-- `.github/workflows/tests.yml` — GitHub Actions CI workflow
-- `dating_app_behavior_dataset.csv` — project dataset
-- `requirements.txt` — Python dependencies
-- `rust_vs_python_intro.ipynb` — Rust ownership exercises
+```text
+.
+├── .github/workflows/tests.yml
+├── tests/test_analysis.py
+├── analysis.py
+├── exploratory_data_analysis.py
+├── dating_app_behavior_dataset.csv
+├── Dockerfile
+├── .dockerignore
+├── .flake8
+├── Makefile
+├── requirements.txt
+└── README.md
+```
 
 ## Setup and Usage
 
+Clone the repository and install the dependencies:
+
 ```bash
-git clone git@github.com:yiranch017/IDS706-Assignment-2.git
+git clone https://github.com/yiranch017/IDS706-Assignment-2.git
 cd IDS706-Assignment-2
+
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
+
 python -m pip install -r requirements.txt
+```
+
+Run the reproducible analysis pipeline:
+
+```bash
 python analysis.py
 ```
 
-The same commands are also available as `make install`, `make test`, and `make run`.
+Or use the Makefile:
+
+```bash
+make install
+make run
+```
 
 ## Testing
 
-Run the full test suite locally with:
+The project contains **9 automated tests** covering typical behavior, edge cases, and the full workflow.
+
+The tests include:
+
+- valid CSV loading;
+- rejection of missing required columns;
+- removal of duplicate and missing observations;
+- IQR outlier detection;
+- outlier-summary validation;
+- swipe-ratio group validation;
+- grouped summary calculations;
+- model training and evaluation; and
+- an end-to-end CSV-to-model pipeline test.
+
+Run all tests with:
+
+```bash
+make test
+```
+
+or:
 
 ```bash
 python -m pytest -v
 ```
 
-The suite contains six unit/edge-case tests and one system test:
+## Continuous Integration
 
-- valid CSV loading;
-- rejection of a dataset missing a required column;
-- removal of duplicate and missing observations;
-- IQR detection of an extreme outlier;
-- correctness of grouped counts and averages;
-- model training, prediction, and evaluation outputs; and
-- an end-to-end test from CSV loading through model evaluation.
+GitHub Actions automatically verifies the project on pushes, pull requests, manual runs, and scheduled daily runs.
 
-GitHub Actions automatically installs the dependencies and runs all tests on every push and pull request. The badge at the top of this README reports the latest workflow result.
+The CI workflow includes:
 
-Workflow history is available on the repository's **Actions** tab for CI evidence.
+- a **Python 3.11 / 3.12 matrix**;
+- automated pytest execution;
+- Black formatting checks;
+- Flake8 linting;
+- Python syntax compilation checks; and
+- a scheduled daily workflow.
 
-<img width="1465" height="796" alt="Screenshot 2026-09-21 at 19 54 59" src="https://github.com/user-attachments/assets/f2705550-978f-497a-ab0f-a1d143cd90f7" />
+Local formatting and code-quality checks can also be run with:
 
-<img width="1445" height="688" alt="Screenshot 2026-09-21 at 19 57 34" src="https://github.com/user-attachments/assets/ad6579f2-6f98-4462-b9fd-4d5e200c87bc" />
+```bash
+make format
+make quality
+```
 
+### CI Evidence
 
-## Main Results
+Workflow history and successful matrix runs are available in the repository's **Actions** tab.
 
-- The original dataset contains no missing values or duplicate rows.
-- Matching outcomes varied only slightly across swiping-behavior and app-usage groups.
-- The Random Forest achieved an MAE of approximately 7.22 and an R² of approximately 0.10, so its predictive performance was limited.
-- `likes_received` had the highest feature importance in the fitted model, but feature importance should not be interpreted causally.
-- In the exploratory comparison, Polars executed the tested filtering and grouping operations faster, while Pandas provided a more polished Jupyter display.
+<!-- Add the screenshot showing Code Quality, Python 3.11, and Python 3.12 all passing here. -->
+
+## Refactoring and Code Quality
+
+The original exploratory analysis was written as one long procedural script. It was refactored into smaller functions with distinct responsibilities for dataset inspection, data-quality assessment, swipe-behavior analysis, app-usage analysis, model evaluation, visualization, and Pandas/Polars comparison.
+
+The refactor also reduced duplicated logic by reusing functions from `analysis.py`, including model training, outlier detection, and grouped summaries. Important analytical comments and interpretations were retained so that the code documents not only **what** is being done, but also **why** particular analytical decisions were made.
+
+The project was verified after refactoring using Black, Flake8, and the automated test suite.
+
+### Refactoring Evidence
+
+<!-- Add the GitHub commit-diff screenshot for the refactoring commit here. -->
+
+## Docker and Containerization
+
+The project can also run inside a reproducible Docker environment.
+
+Build the image:
+
+```bash
+docker build -t dating-app-analysis .
+```
+
+or:
+
+```bash
+make docker-build
+```
+
+Run the analysis inside a container:
+
+```bash
+docker run --rm dating-app-analysis
+```
+
+or:
+
+```bash
+make docker-run
+```
+
+The container uses `python:3.12-slim`, installs the project dependencies, copies the analysis code and dataset, and runs `analysis.py`.
+
+Containerization ensures that the analysis runs with the same Python version and dependencies regardless of the host machine.
+
+### Docker Evidence
+
+**Successful image build**
+
+<!-- Add the Docker build screenshot here. -->
+
+**Successful container execution**
+
+<!-- Add the Docker run screenshot here. -->
 
 ## Limitations
 
-The data is synthetic and the model has low explanatory power. Findings should not be generalized to real dating-app users, and the observed relationships do not establish causality.
+The dataset is synthetic, so the observed patterns should not be generalized to real dating-app users. The Random Forest also has low explanatory power, and neither feature importance nor the exploratory associations establish causal relationships.
