@@ -4,42 +4,60 @@
 
 ## Project Overview
 
-This project explores how dating-app behavior relates to matching outcomes using a synthetic dataset of 50,000 users. The analysis focuses on whether swiping behavior and app usage are associated with `mutual_matches`, and whether behavioral and profile variables can predict matching outcomes.
+This project explores how users' behavior on dating apps relates to their matching outcomes using a synthetic dataset of 50,000 users.
 
-The project includes exploratory analysis, Random Forest regression, Pandas/Polars comparison, automated testing, continuous integration, code-quality checks, and Docker containerization.
+The main question I wanted to look at was: **does swiping right more actually lead to more mutual matches?**
 
-Because the dataset is synthetic, the results are treated as a programming and modeling exercise rather than evidence about real dating-app users.
+I first explored different patterns in swiping and app usage, then trained a Random Forest model to see how well a group of behavioral and profile variables could predict `mutual_matches`. I also compared Pandas and Polars for similar data manipulation tasks.
+
+Over the past few assignments, I gradually improved this project by adding reusable functions, tests, CI, code-quality checks, and Docker containerization.
+
+Because the dataset is synthetic, I treat the results mainly as a data analysis and engineering exercise rather than evidence about real dating-app users.
 
 ## Main Findings
 
-- Matching outcomes vary only slightly across different swipe-behavior groups.
-- Dividing users across the full `swipe_right_ratio` distribution also shows no clear monotonic increase in matches as users swipe right more frequently.
-- The Random Forest model achieved an MAE of approximately **7.22** and an R² of approximately **0.10**, indicating limited predictive power.
-- `likes_received` had the highest Random Forest feature importance, although feature importance should not be interpreted causally.
-- Polars was faster than Pandas for the filtering and grouping operations tested, while Pandas provided a more polished interactive table display.
+One of the main findings is that swiping right more does not seem to have a clear relationship with getting more matches in this dataset.
+
+When I compared the predefined swipe-behavior groups, their average number of mutual matches was very similar. I also divided users into groups across the full `swipe_right_ratio` distribution, and the average number of matches did not consistently increase as swipe-right behavior increased.
+
+The Random Forest model also had relatively limited predictive power:
+
+- **MAE:** about 7.22 mutual matches
+- **R²:** about 0.10
+
+This means the variables included in the model only explain a small amount of the variation in matching outcomes.
+
+`likes_received` had the highest feature importance in the Random Forest model. However, I treat this only as information about how the model makes predictions, not as evidence that receiving more likes directly causes more mutual matches.
 
 ## Data Quality
 
-The dataset contains no missing values or duplicate observations.
+I checked the dataset for missing values, duplicate rows, and outliers before doing the main analysis.
 
-IQR-based outlier detection identified **311 observations (0.62%)** in `emoji_usage_rate`. These observations ranged from **0.74 to 0.94**, which remains within the valid 0-to-1 range for a rate.
+There were no missing values or duplicate observations.
 
-Because these observations are statistically unusual but still plausible values, they were retained rather than automatically removed.
+Using the IQR method, I found **311 outliers (0.62% of the dataset)** in `emoji_usage_rate`. These observations ranged from **0.74 to 0.94**.
+
+I decided to keep them because `emoji_usage_rate` is a rate between 0 and 1, so these values are still valid. They are unusual compared with most users, but unusual behavior does not necessarily mean incorrect data.
 
 ## Analysis
 
-The analysis includes:
+The project includes:
 
-- distribution of swipe-right behavior;
-- comparison of matching outcomes across predefined swipe groups;
-- swipe-ratio quantile analysis across the full behavior distribution;
-- comparison of matching outcomes across app-usage groups;
-- Random Forest regression;
-- actual-versus-predicted visualization;
-- feature-importance analysis; and
-- equivalent filtering/grouping tasks in Pandas and Polars.
+- inspection of the dataset and variable types
+- missing-value and duplicate checks
+- IQR-based outlier detection
+- distribution of `swipe_right_ratio`
+- comparison of matching outcomes across swipe-behavior groups
+- comparison across swipe-right ratio quantiles
+- comparison across app-usage groups
+- Random Forest regression
+- actual vs. predicted values
+- Random Forest feature importance
+- Pandas vs. Polars comparison
 
-The primary reusable workflow is implemented in `analysis.py`, while `exploratory_data_analysis.py` contains the interpretation and visualization workflow.
+The main reusable analysis functions are in `analysis.py`.
+
+`exploratory_data_analysis.py` contains the exploratory analysis, visualizations, and my interpretations of the results.
 
 ## Repository Structure
 
@@ -60,25 +78,33 @@ The primary reusable workflow is implemented in `analysis.py`, while `explorator
 
 ## Setup and Usage
 
-Clone the repository and install the dependencies:
+Clone the repository:
 
 ```bash
 git clone https://github.com/yiranch017/IDS706-Assignment-2.git
 cd IDS706-Assignment-2
+```
 
+Create and activate a virtual environment:
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
+```
 
+Install the dependencies:
+
+```bash
 python -m pip install -r requirements.txt
 ```
 
-Run the reproducible analysis pipeline:
+Run the main analysis:
 
 ```bash
 python analysis.py
 ```
 
-Or use the Makefile:
+The same steps can also be run with:
 
 ```bash
 make install
@@ -87,75 +113,97 @@ make run
 
 ## Testing
 
-The project contains **9 automated tests** covering typical behavior, edge cases, and the full workflow.
+The project currently includes **9 automated tests**.
 
-The tests include:
+They check:
 
-- valid CSV loading;
-- rejection of missing required columns;
-- removal of duplicate and missing observations;
-- IQR outlier detection;
-- outlier-summary validation;
-- swipe-ratio group validation;
-- grouped summary calculations;
-- model training and evaluation; and
-- an end-to-end CSV-to-model pipeline test.
+- loading a valid dataset
+- rejecting a dataset with missing required columns
+- removing duplicate and missing observations
+- detecting an extreme outlier
+- creating the outlier summary correctly
+- creating swipe-ratio groups correctly
+- calculating grouped summaries
+- training and evaluating the Random Forest model
+- running the full pipeline from CSV loading to model evaluation
 
-Run all tests with:
-
-```bash
-make test
-```
-
-or:
+Run the tests with:
 
 ```bash
 python -m pytest -v
 ```
 
-## Continuous Integration
-
-GitHub Actions automatically verifies the project on pushes, pull requests, manual runs, and scheduled daily runs.
-
-The CI workflow includes:
-
-- a **Python 3.11 / 3.12 matrix**;
-- automated pytest execution;
-- Black formatting checks;
-- Flake8 linting;
-- Python syntax compilation checks; and
-- a scheduled daily workflow.
-
-Local formatting and code-quality checks can also be run with:
+or:
 
 ```bash
-make format
+make test
+```
+
+## Continuous Integration
+
+I expanded the original GitHub Actions workflow so that it now checks more than whether the tests simply pass.
+
+The workflow runs on:
+
+- pushes
+- pull requests
+- manual runs
+- a daily scheduled run
+
+It also uses a matrix to test the project with both:
+
+- Python 3.11
+- Python 3.12
+
+Before running the tests, the workflow also checks:
+
+- Black formatting
+- Flake8 linting
+- Python syntax
+
+This helps make sure the project is not only working, but also stays consistently formatted and readable.
+
+Locally, I can run the same code-quality checks with:
+
+```bash
 make quality
 ```
 
 ### CI Evidence
 
-Workflow history and successful matrix runs are available in the repository's **Actions** tab.
-
-<!-- Add the screenshot showing Code Quality, Python 3.11, and Python 3.12 all passing here. -->
+<!-- Add screenshot showing Code Quality, Python 3.11, and Python 3.12 passing -->
 
 ## Refactoring and Code Quality
 
-The original exploratory analysis was written as one long procedural script. It was refactored into smaller functions with distinct responsibilities for dataset inspection, data-quality assessment, swipe-behavior analysis, app-usage analysis, model evaluation, visualization, and Pandas/Polars comparison.
+The original version of `exploratory_data_analysis.py` was mostly one long script. It worked, but as the project became larger it was harder to read and there was repeated logic between the exploratory analysis and `analysis.py`.
 
-The refactor also reduced duplicated logic by reusing functions from `analysis.py`, including model training, outlier detection, and grouped summaries. Important analytical comments and interpretations were retained so that the code documents not only **what** is being done, but also **why** particular analytical decisions were made.
+I refactored the file into smaller functions for different parts of the workflow, including:
 
-The project was verified after refactoring using Black, Flake8, and the automated test suite.
+- dataset inspection
+- data-quality checks
+- swipe-behavior analysis
+- app-usage analysis
+- model evaluation
+- visualization
+- Pandas/Polars comparison
+
+I also reused functions already defined in `analysis.py` instead of repeating the same model training, grouping, and outlier-detection logic.
+
+I kept the comments that explain my analytical decisions and interpretations because I wanted the code to show not only what I did, but also why I made certain choices.
+
+After refactoring, I ran Black, Flake8, and the full test suite to make sure the project still worked.
 
 ### Refactoring Evidence
 
-<!-- Add the GitHub commit-diff screenshot for the refactoring commit here. -->
+<!-- Add GitHub commit-diff screenshot here -->
 
 ## Docker and Containerization
 
-The project can also run inside a reproducible Docker environment.
+I also containerized the analysis so that it can run in a consistent environment without depending on the Python setup on my own computer.
 
-Build the image:
+The Docker image uses `python:3.12-slim`, installs the dependencies from `requirements.txt`, copies the necessary project files, and runs `analysis.py`.
+
+Build the image with:
 
 ```bash
 docker build -t dating-app-analysis .
@@ -167,7 +215,7 @@ or:
 make docker-build
 ```
 
-Run the analysis inside a container:
+Run it with:
 
 ```bash
 docker run --rm dating-app-analysis
@@ -179,20 +227,32 @@ or:
 make docker-run
 ```
 
-The container uses `python:3.12-slim`, installs the project dependencies, copies the analysis code and dataset, and runs `analysis.py`.
-
-Containerization ensures that the analysis runs with the same Python version and dependencies regardless of the host machine.
+The container produced the same main analysis output as running the project locally, including the outlier summary, swipe-behavior analysis, and Random Forest evaluation.
 
 ### Docker Evidence
 
 **Successful image build**
 
-<!-- Add the Docker build screenshot here. -->
+<!-- Add Docker build screenshot here -->
 
-**Successful container execution**
+**Successful container run**
 
-<!-- Add the Docker run screenshot here. -->
+<!-- Add Docker run screenshot here -->
+
+## Pandas vs. Polars
+
+I ran similar filtering and grouping operations using both Pandas and Polars.
+
+Polars was faster for the operations I tested and also displays the data type directly under each column in its default output.
+
+At the same time, I found Pandas easier to work with interactively because its tables integrate more naturally with Jupyter Notebook and are easier to visually inspect.
+
+For this dataset, I think the difference is less about one library being universally better and more about the tradeoff between performance and the workflow I am using.
 
 ## Limitations
 
-The dataset is synthetic, so the observed patterns should not be generalized to real dating-app users. The Random Forest also has low explanatory power, and neither feature importance nor the exploratory associations establish causal relationships.
+The dataset is synthetic, so these findings should not be generalized to real dating-app users.
+
+The Random Forest model also has relatively low explanatory power, which suggests that the variables included here are not enough to explain most of the variation in matching outcomes.
+
+Finally, the relationships found in the exploratory analysis and the Random Forest feature importance should not be interpreted as causal effects.
