@@ -4,3 +4,5 @@ matplotlib
 polars
 scikit-learn
 pytest
+black
+flake8
