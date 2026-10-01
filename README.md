@@ -171,7 +171,8 @@ make quality
 
 ### CI Evidence
 
-<!-- Add screenshot showing Code Quality, Python 3.11, and Python 3.12 passing -->
+<img width="962" height="594" alt="Screenshot 2026-09-30 at 20 17 49" src="https://github.com/user-attachments/assets/c5635edb-8e6b-43ba-ad25-60cd0d4e2465" />
+
 
 ## Refactoring and Code Quality
 
@@ -195,7 +196,8 @@ After refactoring, I ran Black, Flake8, and the full test suite to make sure the
 
 ### Refactoring Evidence
 
-<!-- Add GitHub commit-diff screenshot here -->
+<img width="1400" height="675" alt="Screenshot 2026-09-30 at 19 52 09" src="https://github.com/user-attachments/assets/2e197a43-4b7e-4d80-b83a-d3a16e738218" />
+
 
 ## Docker and Containerization
 
@@ -233,11 +235,11 @@ The container produced the same main analysis output as running the project loca
 
 **Successful image build**
 
-<!-- Add Docker build screenshot here -->
+<img width="659" height="359" alt="Screenshot 2026-09-30 at 20 07 57" src="https://github.com/user-attachments/assets/800df415-cf92-4bd1-aa1b-ba340173c28e" />
 
 **Successful container run**
 
-<!-- Add Docker run screenshot here -->
+<img width="652" height="508" alt="Screenshot 2026-09-30 at 19 59 45" src="https://github.com/user-attachments/assets/dd3a22ae-f96b-423e-ad34-c55c2ad18924" />
 
 ## Pandas vs. Polars
 
