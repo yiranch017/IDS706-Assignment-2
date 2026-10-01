@@ -10,7 +10,7 @@ The main question I wanted to look at was: **does swiping right more actually le
 
 I first explored different patterns in swiping and app usage, then trained a Random Forest model to see how well a group of behavioral and profile variables could predict `mutual_matches`. I also compared Pandas and Polars for similar data manipulation tasks.
 
-Over the past few assignments, I gradually improved this project by adding reusable functions, tests, CI, code-quality checks, and Docker containerization.
+Over the past few weeks, I gradually improved this project by adding reusable functions, tests, CI, code-quality checks, and Docker containerization.
 
 Because the dataset is synthetic, I treat the results mainly as a data analysis and engineering exercise rather than evidence about real dating-app users.
 
@@ -27,7 +27,7 @@ The Random Forest model also had relatively limited predictive power:
 
 This means the variables included in the model only explain a small amount of the variation in matching outcomes.
 
-`likes_received` had the highest feature importance in the Random Forest model. However, I treat this only as information about how the model makes predictions, not as evidence that receiving more likes directly causes more mutual matches.
+`likes_received` had the highest feature importance in the Random Forest model. However, I treat this only as information about how the model makes predictions instead of empirical evidence that receiving more likes directly causes more mutual matches.
 
 ## Data Quality
 
@@ -161,7 +161,7 @@ Before running the tests, the workflow also checks:
 - Flake8 linting
 - Python syntax
 
-This helps make sure the project is not only working, but also stays consistently formatted and readable.
+This helps make sure the project stays consistently formatted and readable.
 
 Locally, I can run the same code-quality checks with:
 
@@ -176,7 +176,7 @@ make quality
 
 ## Refactoring and Code Quality
 
-The original version of `exploratory_data_analysis.py` was mostly one long script. It worked, but as the project became larger it was harder to read and there was repeated logic between the exploratory analysis and `analysis.py`.
+The original version of `exploratory_data_analysis.py` was mostly one long script. However, as the project became larger it was harder to read and there was repeated logic between the exploratory analysis and `analysis.py`.
 
 I refactored the file into smaller functions for different parts of the workflow, including:
 
@@ -190,7 +190,7 @@ I refactored the file into smaller functions for different parts of the workflow
 
 I also reused functions already defined in `analysis.py` instead of repeating the same model training, grouping, and outlier-detection logic.
 
-I kept the comments that explain my analytical decisions and interpretations because I wanted the code to show not only what I did, but also why I made certain choices.
+I kept the comments that explain my analytical decisions and interpretations to show the reasoning behind my choices.
 
 After refactoring, I ran Black, Flake8, and the full test suite to make sure the project still worked.
 
@@ -249,7 +249,7 @@ Polars was faster for the operations I tested and also displays the data type di
 
 At the same time, I found Pandas easier to work with interactively because its tables integrate more naturally with Jupyter Notebook and are easier to visually inspect.
 
-For this dataset, I think the difference is less about one library being universally better and more about the tradeoff between performance and the workflow I am using.
+For this dataset, I think the difference is more about the tradeoff between performance and the workflow I am using.
 
 ## Limitations
 
